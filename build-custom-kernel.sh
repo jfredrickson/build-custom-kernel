@@ -3,12 +3,17 @@
 # https://fedoraproject.org/wiki/Building_a_custom_kernel
 
 FEDORA_RELEASE=30
-AGESA_PATCH_FILE=$(pwd)/agesa-workaround.patch
-KERNEL_PACKAGES="kernel kernel-core kernel-debug-devel kernel-devel kernel-modules kernel-modules-extra"
+# Exclude these packages in /etc/dnf/dnf.conf
+#KERNEL_PACKAGES="kernel kernel-core kernel-debug-devel kernel-devel kernel-modules kernel-modules-extra"
+KERNEL_PACKAGES="kernel kernel-core kernel-devel kernel-modules kernel-modules-extra"
+
 KERNEL_SRC=$HOME/src/kernel
+SCRIPT=$(readlink -f "$0")
+AGESA_PATCH_FILE=$(dirname "$SCRIPT")/agesa-workaround.patch
 
 pushd $KERNEL_SRC
   # Get latest kernel source
+  git checkout -- .
   git checkout master
   git pull origin
 
@@ -25,7 +30,8 @@ pushd $KERNEL_SRC
   git commit -m "AGESA workaround"
 
   # Build
-  fedpkg local
+  make release
+  fedpkg local --without debug --without debuginfo --without cross
 
   # Install
   ver=$(fedpkg verrel | sed 's/^kernel-//').$(arch)
@@ -33,6 +39,6 @@ pushd $KERNEL_SRC
     pkgs="${pkgs} ${pkg}-${ver}.rpm"
   done
   pushd x86_64
-    sudo dnf install --nogpgcheck --disableexcludes=all $pkgs
+    sudo dnf install --nogpgcheck --disableexcludes=all $pkgs kernel-headers
   popd
 popd
