@@ -8,6 +8,7 @@ FEDORA_RELEASE=30
 KERNEL_PACKAGES="kernel kernel-core kernel-devel kernel-modules kernel-modules-extra"
 
 KERNEL_SRC=$HOME/src/kernel
+KERNEL_HEADERS_SRC=$HOME/src/kernel-headers
 SCRIPT=$(readlink -f "$0")
 AGESA_PATCH_FILE=$(dirname "$SCRIPT")/agesa-workaround.patch
 
@@ -38,7 +39,25 @@ pushd $KERNEL_SRC
   for pkg in $KERNEL_PACKAGES ; do
     pkgs="${pkgs} ${pkg}-${ver}.rpm"
   done
-  pushd x86_64
-    sudo dnf install --nogpgcheck --disableexcludes=all $pkgs kernel-headers
+  pushd $(arch)
+    sudo dnf install --nogpgcheck --disableexcludes=all $pkgs
   popd
+popd
+
+pushd $KERNEL_HEADERS_SRC
+  # Get latest kernel-headers source
+  git checkout f${FEDORA_RELEASE}
+  git pull
+
+  # Build
+  fedpkg local
+
+  # Install
+  ver=$(fedpkg verrel | sed 's/^kernel-headers-//').$(arch)
+  pushd $(arch)
+    sudo dnf install --nogpgcheck --disableexcludes=all kernel-headers-${ver}.rpm
+  popd
+
+  # Cleanup
+  fedpkg clean
 popd
